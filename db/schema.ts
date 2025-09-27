@@ -1,0 +1,21 @@
+export const createTables = `
+CREATE TABLE IF NOT EXISTS classes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS students (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  class_id INTEGER,
+  section_id INTEGER,
+  present INTEGER DEFAULT 0,
+  FOREIGN KEY(class_id) REFERENCES classes(id),
+  FOREIGN KEY(section_id) REFERENCES sections(id)
+);
+`;
