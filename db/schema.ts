@@ -4,18 +4,21 @@ CREATE TABLE IF NOT EXISTS classes (
   name TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS sections (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL
-);
 
 CREATE TABLE IF NOT EXISTS students (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   class_id INTEGER,
-  section_id INTEGER,
-  present INTEGER DEFAULT 0,
-  FOREIGN KEY(class_id) REFERENCES classes(id),
-  FOREIGN KEY(section_id) REFERENCES sections(id)
+  FOREIGN KEY (class_id) REFERENCES classes (id)
+);
+
+
+CREATE TABLE IF NOT EXISTS attendance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('present','absent')),
+  UNIQUE(student_id, date),                 -- one record per student per day
+  FOREIGN KEY (student_id) REFERENCES students(id)
 );
 `;

@@ -10,23 +10,24 @@ export default function Index() {
   const [className, setClassName] = useState("");
   const [visible, setVisible] = useState(false);
 
-useEffect(() => {
-  (async () => {
-    await initDB();
-    const stored = await getClasses(); // SELECT * FROM classes
-    setClasses(stored); // keep full objects {id, name}
-  })();
-}, []);
+  const today = new Date();
+  useEffect(() => {
+    (async () => {
+      await initDB();
+      const stored = await getClasses(); // SELECT * FROM classes
+      setClasses(stored); // keep full objects {id, name}
+    })();
+  }, []);
 
-async function handleAddClass() {
-  if (className.trim().length === 0) return;
+  async function handleAddClass() {
+    if (className.trim().length === 0) return;
 
-  await addClassDB(className);
-  const updated = await getClasses();
-  setClasses(updated);
-  setClassName("");
-  setVisible(false);
-}
+    await addClassDB(className);
+    const updated = await getClasses();
+    setClasses(updated);
+    setClassName("");
+    setVisible(false);
+  }
 
   const toggleOverlay = () => setVisible(!visible);
 
@@ -35,53 +36,56 @@ async function handleAddClass() {
       <View style={{ flex: 1 }}>
         <Navbar />
 
-        <View style={{ alignItems: "flex-end", margin: 10 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", margin: 10 }}>
+          <Text>
+            {today.toDateString()}
+          </Text>
           <Button onPress={toggleOverlay} mode="contained">Add Class</Button>
         </View>
 
-    {classes.map((c) => (
-  <View
-    key={c.id}
-    style={{
-      marginBottom: 10,
-      padding: 20,
-      borderRadius: 8,
-      borderColor: "gray",
-      borderWidth: 1,
-      backgroundColor: "#f0f0f0",
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <Link
-      href={{ pathname: "/class/[id]", params: { id: c.id, name: c.name } }}
-      style={{ flex: 1 }}
-    >
-      <Text>{c.name}</Text>
-    </Link>
+        {classes.map((c) => (
+          <View
+            key={c.id}
+            style={{
+              marginBottom: 10,
+              padding: 20,
+              borderRadius: 8,
+              borderColor: "gray",
+              borderWidth: 1,
+              backgroundColor: "#f0f0f0",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Link
+              href={{ pathname: "/class/[id]", params: { id: c.id, name: c.name } }}
+              style={{ flex: 1 }}
+            >
+              <Text>{c.name}</Text>
+            </Link>
 
-    <IconButton
-      icon="delete"
-      mode="contained"
-      iconColor="red"
-      onPress={() => {
-        Alert.alert("Delete Class", "Are you sure?", [
-          { text: "Cancel" },
-          {
-            text: "Delete",
-            onPress: async () => {
-              await deleteClass(c.id); // ✅ real id
-              const updated = await getClasses();
-              setClasses(updated);
-              Alert.alert("Deleted");
-            },
-          },
-        ]);
-      }}
-    />
-  </View>
-))}
+            <IconButton
+              icon="delete"
+              mode="contained"
+              iconColor="red"
+              onPress={() => {
+                Alert.alert("Delete Class", "Are you sure?", [
+                  { text: "Cancel" },
+                  {
+                    text: "Delete",
+                    onPress: async () => {
+                      await deleteClass(c.id); // ✅ real id
+                      const updated = await getClasses();
+                      setClasses(updated);
+                      Alert.alert("Deleted");
+                    },
+                  },
+                ]);
+              }}
+            />
+          </View>
+        ))}
 
 
         <Portal>
@@ -117,17 +121,17 @@ async function handleAddClass() {
         </Portal>
 
         <Button
-  mode="contained"
-  buttonColor="red"
-  textColor="white"
-  onPress={async () => {
-    await clearAllData();
-    console.log("All data cleared!");
-  }}
-  style={{ marginBottom: 50 }}
->
-  Clear Data
-</Button>
+          mode="contained"
+          buttonColor="red"
+          textColor="white"
+          onPress={async () => {
+            await clearAllData();
+            console.log("All data cleared!");
+          }}
+          style={{ marginBottom: 50 }}
+        >
+          Clear Data
+        </Button>
       </View>
     </Provider>
   );
