@@ -1,67 +1,105 @@
 import Navbar from "@/components/navbar";
-import React, { useState } from "react";
-import { View } from "react-native";
-import { Button, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
+import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB } from "@/db/database";
+import { Link } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Alert, View } from "react-native";
+import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
-  const [classes, setClasses] = useState<string[]>([]);
-   const [className, setClassName] = useState("");
-
-  async function addClass() {
-      if (className.trim().length === 0) return;
-       setClasses((prev) => [...prev, className]);
-        setClassName("");
-    setVisible(false);
-
-  }
-
-  const formData = {
-    className: "",
-  };
-
+  const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
+  const [className, setClassName] = useState("");
   const [visible, setVisible] = useState(false);
-  const toggleOverlay = () => {
-    setVisible(!visible);
-  };
+
+useEffect(() => {
+  (async () => {
+    await initDB();
+    const stored = await getClasses(); // SELECT * FROM classes
+    setClasses(stored); // keep full objects {id, name}
+  })();
+}, []);
+
+async function handleAddClass() {
+  if (className.trim().length === 0) return;
+
+  await addClassDB(className);
+  const updated = await getClasses();
+  setClasses(updated);
+  setClassName("");
+  setVisible(false);
+}
+
+  const toggleOverlay = () => setVisible(!visible);
+
   return (
     <Provider>
       <View style={{ flex: 1 }}>
         <Navbar />
 
-        {/* Add Class Button */}
         <View style={{ alignItems: "flex-end", margin: 10 }}>
           <Button onPress={toggleOverlay} mode="contained">Add Class</Button>
         </View>
 
-        {/* Conditional rendering */}
-        {classes.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <Text>No class found</Text>
-          </View>
-        ) : (
-          <View style={{ flex: 1, padding: 20 }}>
-            {classes.map((c, i) => (
-              <Text key={i}>{c}</Text>
-            ))}
-          </View>
-        )}
+    {classes.map((c) => (
+  <View
+    key={c.id}
+    style={{
+      marginBottom: 10,
+      padding: 20,
+      borderRadius: 8,
+      borderColor: "gray",
+      borderWidth: 1,
+      backgroundColor: "#f0f0f0",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    }}
+  >
+    <Link
+      href={{ pathname: "/class/[id]", params: { id: c.id, name: c.name } }}
+      style={{ flex: 1 }}
+    >
+      <Text>{c.name}</Text>
+    </Link>
 
-           <Portal >
-           <Modal
+    <IconButton
+      icon="delete"
+      mode="contained"
+      iconColor="red"
+      onPress={() => {
+        Alert.alert("Delete Class", "Are you sure?", [
+          { text: "Cancel" },
+          {
+            text: "Delete",
+            onPress: async () => {
+              await deleteClass(c.id); // ✅ real id
+              const updated = await getClasses();
+              setClasses(updated);
+              Alert.alert("Deleted");
+            },
+          },
+        ]);
+      }}
+    />
+  </View>
+))}
+
+
+        <Portal>
+          <Modal
             visible={visible}
             onDismiss={() => setVisible(false)}
             contentContainerStyle={{
               backgroundColor: "white",
               padding: 20,
               marginHorizontal: 20,
-              borderRadius: 8,
+              borderRadius: 8
             }}
           >
             <Text style={{ marginBottom: 10 }}>Enter Class Name</Text>
             <TextInput
               mode="outlined"
               value={className}
-              onChangeText={setClassName} // ✅ handle typing
+              onChangeText={setClassName}
               placeholder="Class Name"
               style={{ marginBottom: 20 }}
             />
@@ -73,12 +111,23 @@ export default function Index() {
               >
                 Cancel
               </Button>
-              <Button onPress={addClass} mode="contained">
-                Add
-              </Button>
+              <Button onPress={handleAddClass} mode="contained">Add</Button>
             </View>
           </Modal>
         </Portal>
+
+        <Button
+  mode="contained"
+  buttonColor="red"
+  textColor="white"
+  onPress={async () => {
+    await clearAllData();
+    console.log("All data cleared!");
+  }}
+  style={{ marginBottom: 50 }}
+>
+  Clear Data
+</Button>
       </View>
     </Provider>
   );
