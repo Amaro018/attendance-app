@@ -1,3 +1,4 @@
+import Navbar from "@/components/navbar";
 import {
   addStudent,
   getAttendanceByStudent,
@@ -75,8 +76,7 @@ export default function ClassDetail() {
 
   return (
     <Provider>
-
-
+      <Navbar />
       <View style={{ flex: 1, padding: 20 }}>
 
         <View style={{ marginTop: 20 }}>

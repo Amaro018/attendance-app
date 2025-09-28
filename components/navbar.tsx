@@ -1,9 +1,13 @@
+import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function Navbar() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Attendance App</Text>
+      <Link href="/" style={{ marginRight: 10 }}>
+        <Text style={styles.title}>Attendance App</Text>
+      </Link>
+      <Text>Made with ❤️ by <Link href="https://github.com/Amaro018" style={{ color: "blue" }}>Jhomari Amaro</Link></Text>
     </View>
   );
 }

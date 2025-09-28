@@ -1,8 +1,8 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB } from "@/db/database";
+import { addClass as addClassDB, deleteClass, getClasses, initDB } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, FlatList, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
@@ -33,6 +33,7 @@ export default function Index() {
 
   return (
     <Provider>
+
       <View style={{ flex: 1 }}>
         <Navbar />
 
@@ -43,49 +44,55 @@ export default function Index() {
           <Button onPress={toggleOverlay} mode="contained">Add Class</Button>
         </View>
 
-        {classes.map((c) => (
-          <View
-            key={c.id}
-            style={{
-              marginBottom: 10,
-              padding: 20,
-              borderRadius: 8,
-              borderColor: "gray",
-              borderWidth: 1,
-              backgroundColor: "#f0f0f0",
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Link
-              href={{ pathname: "/class/[id]", params: { id: c.id, name: c.name } }}
-              style={{ flex: 1 }}
-            >
-              <Text>{c.name}</Text>
-            </Link>
-
-            <IconButton
-              icon="delete"
-              mode="contained"
-              iconColor="red"
-              onPress={() => {
-                Alert.alert("Delete Class", "Are you sure?", [
-                  { text: "Cancel" },
-                  {
-                    text: "Delete",
-                    onPress: async () => {
-                      await deleteClass(c.id); // ✅ real id
-                      const updated = await getClasses();
-                      setClasses(updated);
-                      Alert.alert("Deleted");
-                    },
-                  },
-                ]);
+        <FlatList
+          data={classes}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                marginBottom: 10,
+                padding: 20,
+                borderRadius: 8,
+                borderColor: "gray",
+                borderWidth: 1,
+                backgroundColor: "#f0f0f0",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
-            />
-          </View>
-        ))}
+            >
+              <Link
+                href={{ pathname: "/class/[id]", params: { id: item.id, name: item.name } }}
+                style={{ flex: 1 }}
+              >
+                <Text>{item.name}</Text>
+              </Link>
+
+              <IconButton
+                icon="delete"
+                mode="contained"
+                iconColor="red"
+                onPress={() => {
+                  Alert.alert("Delete Class", "Are you sure?", [
+                    { text: "Cancel" },
+                    {
+                      text: "Delete",
+                      onPress: async () => {
+                        await deleteClass(item.id);
+                        const updated = await getClasses();
+                        setClasses(updated);
+                        Alert.alert("Deleted");
+                      },
+                    },
+                  ]);
+                }}
+              />
+            </View>
+
+          )}
+
+        />
 
 
         <Portal>
@@ -118,20 +125,9 @@ export default function Index() {
               <Button onPress={handleAddClass} mode="contained">Add</Button>
             </View>
           </Modal>
+
         </Portal>
 
-        <Button
-          mode="contained"
-          buttonColor="red"
-          textColor="white"
-          onPress={async () => {
-            await clearAllData();
-            console.log("All data cleared!");
-          }}
-          style={{ marginBottom: 50 }}
-        >
-          Clear Data
-        </Button>
       </View>
     </Provider>
   );
