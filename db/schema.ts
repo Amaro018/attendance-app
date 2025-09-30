@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS students (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   class_id INTEGER,
+  gender TEXT CHECK (gender IN ('male', 'female')),
+  UNIQUE(name, class_id),
   FOREIGN KEY (class_id) REFERENCES classes (id)
 );
 

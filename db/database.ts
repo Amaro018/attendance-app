@@ -3,6 +3,8 @@ import { createTables } from "./schema";
 
 const db = SQLite.openDatabaseSync("attendance.db");
 
+
+
 // ✅ Initialize DB tables
 export const initDB = async () => {
   await db.execAsync(createTables);
@@ -14,14 +16,19 @@ export const addClass = async (name: string) => {
 };
 export const getClasses = async () =>
   db.getAllAsync<any>("SELECT * FROM classes");
+
+export const updateClass = async (id: number, name: string) => {
+  await db.runAsync("UPDATE classes SET name = ? WHERE id = ?", name, id);
+};
 export const deleteClass = async (id: number) =>
   db.runAsync("DELETE FROM classes WHERE id = ?", [id]);
 
 // ✅ Students
-export const addStudent = async (name: string, class_id: number) => {
+export const addStudent = async (name: string, class_id: number, gender: string) => {
+  console.log(name, class_id, gender);
   await db.runAsync(
-    "INSERT INTO students (name, class_id) VALUES (?, ?)",
-    [name, class_id]
+    "INSERT INTO students (name, class_id, gender) VALUES (?, ?, ?)",
+    [name, class_id, gender]
   );
 };
 export const getStudents = async () =>
@@ -93,10 +100,11 @@ export const getAttendanceByStudent = async (studentId: number) => {
 // ✅ Clear All
 export const clearAllData = async () => {
   await db.execAsync(`
-    DELETE FROM attendance;
-    DELETE FROM students;
-    DELETE FROM classes;
+    DROP TABLE IF EXISTS attendance;
+    DROP TABLE IF EXISTS students;
+    DROP TABLE IF EXISTS classes;
   `);
+  await db.execAsync(createTables);
 };
 
 export default db;

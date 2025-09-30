@@ -1,14 +1,20 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, deleteClass, getClasses, initDB } from "@/db/database";
+import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
+
   const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
   const [className, setClassName] = useState("");
   const [visible, setVisible] = useState(false);
+
+  const [editVisible, setEditVisible] = useState(false);
+  const [editClassId, setEditClassId] = useState<number | null>(null);
+  const [editClassName, setEditClassName] = useState("");
+
 
   const today = new Date();
   useEffect(() => {
@@ -21,13 +27,25 @@ export default function Index() {
 
   async function handleAddClass() {
     if (className.trim().length === 0) return;
-
-    await addClassDB(className);
-    const updated = await getClasses();
-    setClasses(updated);
-    setClassName("");
-    setVisible(false);
+    try {
+      if (editClassId) {
+        await updateClass(editClassId, className); // Update if editing
+        Alert.alert("Class Updated Successfuly");
+      } else {
+        await addClassDB(className); // Add if creating
+        Alert.alert("Class Added Successfuly");
+      }
+      const updated = await getClasses();
+      setClasses(updated);
+      setClassName("");
+      setEditClassId(null); // Reset edit state
+      setVisible(false);
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An error occurred while saving the class.");
+    }
   }
+
 
   const toggleOverlay = () => setVisible(!visible);
 
@@ -82,23 +100,37 @@ export default function Index() {
                         await deleteClass(item.id);
                         const updated = await getClasses();
                         setClasses(updated);
-                        Alert.alert("Deleted");
+                        Alert.alert("Class Deleted Successfuly");
                       },
                     },
                   ]);
                 }}
               />
+
+
+              <IconButton
+                icon="pencil"
+                mode="contained"
+                iconColor="blue"
+                onPress={() => {
+                  setEditClassId(item.id);
+                  setClassName(item.name);
+                  setVisible(true);
+                }}
+              />
             </View>
-
           )}
-
         />
 
 
         <Portal>
           <Modal
             visible={visible}
-            onDismiss={() => setVisible(false)}
+            onDismiss={() => {
+              setVisible(false);
+              setClassName(""); // Clear field on close
+              setEditClassId(null); // Reset edit state on close
+            }}
             contentContainerStyle={{
               backgroundColor: "white",
               padding: 20,
@@ -106,7 +138,9 @@ export default function Index() {
               borderRadius: 8
             }}
           >
-            <Text style={{ marginBottom: 10 }}>Enter Class Name</Text>
+            <Text style={{ marginBottom: 10 }}>
+              {editClassId ? "Edit Class Name" : "Enter Class Name"}
+            </Text>
             <TextInput
               mode="outlined"
               value={className}
@@ -114,20 +148,29 @@ export default function Index() {
               placeholder="Class Name"
               style={{ marginBottom: 20 }}
             />
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <Button
-                onPress={() => setVisible(false)}
+                onPress={() => {
+                  setVisible(false);
+                  setClassName("");
+                  setEditClassId(null);
+                }}
                 style={{ marginRight: 10 }}
                 mode="contained-tonal"
               >
                 Cancel
               </Button>
-              <Button onPress={handleAddClass} mode="contained">Add</Button>
+              <Button onPress={handleAddClass} mode="contained">
+                {editClassId ? "Save" : "Add"}
+              </Button>
             </View>
           </Modal>
-
         </Portal>
 
+        <Button mode="contained" onPress={async () => await clearAllData()} style={{ margin: 50 }}>
+          clear data
+        </Button>
       </View>
     </Provider>
   );

@@ -7,9 +7,12 @@ import {
   updateStudentName
 } from "@/db/database";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, FlatList, ScrollView, Text, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, TextInput } from "react-native-paper";
+
+
+
 
 export default function ClassDetail() {
   const dateToday = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
@@ -17,6 +20,13 @@ export default function ClassDetail() {
   const [students, setStudents] = useState<any[]>([]);
   const [visible, setVisible] = useState(false);
   const [studentName, setStudentName] = useState("");
+
+  const [studentData, setStudentData] = useState({
+    id: null,
+    name: "",
+    gender: "",
+  });
+
 
   // ✅ history modal states
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -26,6 +36,20 @@ export default function ClassDetail() {
   const [editVisible, setEditVisible] = useState(false);
   const [editStudentId, setEditStudentId] = useState<number | null>(null);
   const [editStudentName, setEditStudentName] = useState("");
+
+  const [sortOrder, setSortOrder] = useState("asc"); // "asc" or "desc"
+  const [genderFilter, setGenderFilter] = useState(""); // "", "male", "female"
+
+
+  const filteredStudents = students
+    .filter((student) => !genderFilter || student.gender === genderFilter)
+    .sort((a, b) =>
+      sortOrder === "asc"
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name)
+    );
+
+
 
   async function refresh() {
     if (id) {
@@ -39,11 +63,27 @@ export default function ClassDetail() {
   }, [id]);
 
   async function handleAddStudent() {
-    if (!studentName.trim()) return;
-    await addStudent(studentName, Number(id));
-    setStudentName("");
-    setVisible(false);
-    refresh();
+    if (!studentName.trim() || !studentData.gender) {
+      Alert.alert("Error", "Please enter name and select gender.");
+      return;
+    }
+
+    try {
+      await addStudent(studentName, Number(id), studentData.gender);
+      Alert.alert("Student Added Successfuly");
+      setStudentName("");
+      setStudentData({ id: null, name: "", gender: "" }); // Reset form
+      setVisible(false);
+      refresh();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An error occurred while saving the student.");
+    }
+  }
+
+
+  function handleGenderChange(gender: string) {
+    setStudentData({ ...studentData, gender });
   }
 
   async function handleMark(studentId: number, status: 'present' | 'absent') {
@@ -61,11 +101,17 @@ export default function ClassDetail() {
 
   async function handleEditStudent() {
     if (!editStudentId || !editStudentName.trim()) return;
-    await updateStudentName(editStudentId, editStudentName.trim());
-    setEditVisible(false);
-    setEditStudentId(null);
-    setEditStudentName("");
-    refresh();
+    try {
+      await updateStudentName(editStudentId, editStudentName.trim());
+      Alert.alert("Student Updated Successfuly");
+      setEditVisible(false);
+      setEditStudentId(null);
+      setEditStudentName("");
+      refresh();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An error occurred while saving the student.");
+    }
   }
 
   function openEditModal(student: any) {
@@ -91,18 +137,46 @@ export default function ClassDetail() {
 
         </View>
 
+        <View style={{ flexDirection: 'row', margin: 10 }}>
+          <Button
+            mode={genderFilter === "" ? "contained" : "outlined"}
+            onPress={() => setGenderFilter("")}
+            style={{ marginRight: 5 }}
+          >
+            All
+          </Button>
+          <Button
+            mode={genderFilter === "male" ? "contained" : "outlined"}
+            onPress={() => setGenderFilter("male")}
+            style={{ marginRight: 5 }}
+          >
+            Male
+          </Button>
+          <Button
+            mode={genderFilter === "female" ? "contained" : "outlined"}
+            onPress={() => setGenderFilter("female")}
+            style={{ marginRight: 15 }}
+          >
+            Female
+          </Button>
+          <Button
+            mode="outlined"
+            icon={sortOrder === "asc" ? "sort-alphabetical-ascending" : "sort-alphabetical-descending"}
+            onPress={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+          >
+            {sortOrder === "asc" ? "A-Z" : "Z-A"}
+          </Button>
+        </View>
 
-
-
-        {students.length === 0 && (
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <Text style={{ fontSize: 20 }}>No students found</Text>
-          </View>
-        )}
 
         <FlatList
           style={{ marginTop: 20 }}
-          data={students}
+          ListEmptyComponent={
+            <View style={{ padding: 30, alignItems: "center" }}>
+              <Text style={{ color: "gray", fontSize: 18 }}>No students found</Text>
+            </View>
+          }
+          data={filteredStudents}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <View style={{
@@ -210,6 +284,32 @@ export default function ClassDetail() {
               placeholder="Student Full Name"
               style={{ marginBottom: 20 }}
             />
+
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
+              <Button
+                style={{
+                  backgroundColor: studentData.gender === "male" ? "blue" : "pink",
+                  flex: 1,
+                  marginRight: 8,
+                }}
+                onPress={() => handleGenderChange("male")}
+              >
+                <Text style={{ color: "white" }}>Male</Text>
+              </Button>
+              <Button
+                mode="contained"
+                style={{
+                  backgroundColor: studentData.gender === "female" ? "blue" : "pink",
+                  flex: 1,
+                  marginLeft: 8,
+                }}
+                onPress={() => handleGenderChange("female")}
+              >
+                <Text style={{ color: "white" }}>Female</Text>
+              </Button>
+            </View>
+
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <Button onPress={() => setVisible(false)} style={{ marginRight: 10 }}>Cancel</Button>
               <Button mode="contained" onPress={handleAddStudent}>Add</Button>
