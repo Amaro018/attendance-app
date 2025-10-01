@@ -1,13 +1,32 @@
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 
 export default function Navbar() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      isDark && { backgroundColor: "#18191A", shadowColor: "#fff" }
+    ]}>
       <Link href="/" style={{ marginRight: 10 }}>
-        <Text style={styles.title}>Attendance App</Text>
+        <Text style={[
+          styles.title,
+          isDark && { color: "#fff" }
+        ]}>
+          Attendance App
+        </Text>
       </Link>
-      <Text>Made with ❤️ by <Link href="https://github.com/Amaro018" style={{ color: "blue" }}>Jhomari Amaro</Link></Text>
+      <Text style={{ color: isDark ? "#fff" : "#222" }}>
+        Made with ❤️ by{" "}
+        <Link
+          href="https://github.com/Amaro018"
+          style={{ color: isDark ? "#58a6ff" : "blue" }}
+        >
+          Jhomari Amaro
+        </Link>
+      </Text>
     </View>
   );
 }

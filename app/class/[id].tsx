@@ -4,17 +4,21 @@ import {
   getAttendanceByStudent,
   getAttendanceForClass,
   markAttendance,
-  updateStudentName
+  updateStudent
 } from "@/db/database";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, ScrollView, Text, View } from "react-native";
+import { Alert, FlatList, ScrollView, Text, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, TextInput } from "react-native-paper";
 
 
 
 
 export default function ClassDetail() {
+
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
   const dateToday = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const { id, name } = useLocalSearchParams();
   const [students, setStudents] = useState<any[]>([]);
@@ -31,11 +35,18 @@ export default function ClassDetail() {
   // ✅ history modal states
   const [historyVisible, setHistoryVisible] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyName, setHistoryName] = useState("");
+  const [historyName, setHistoryName] = useState({
+    name: "",
+    gender: "",
+  });
 
   const [editVisible, setEditVisible] = useState(false);
   const [editStudentId, setEditStudentId] = useState<number | null>(null);
-  const [editStudentName, setEditStudentName] = useState("");
+  const [editStudent, setEditStudent] = useState({
+    id: null,
+    name: "",
+    gender: "",
+  });
 
   const [sortOrder, setSortOrder] = useState("asc"); // "asc" or "desc"
   const [genderFilter, setGenderFilter] = useState(""); // "", "male", "female"
@@ -86,27 +97,34 @@ export default function ClassDetail() {
     setStudentData({ ...studentData, gender });
   }
 
+  function handleEditGenderChange(gender: string) {
+    setEditStudent({ ...editStudent, gender });
+  }
+
   async function handleMark(studentId: number, status: 'present' | 'absent') {
     await markAttendance(studentId, dateToday, status);
     refresh();
   }
 
   // ✅ fetch and show history
-  async function showHistory(studentId: number, studentName: string) {
+  async function showHistory(studentId: number, studentName: string, studentGender: string) {
     const records = await getAttendanceByStudent(studentId);
     setHistoryData(records);
-    setHistoryName(studentName);
+    setHistoryName({ name: studentName, gender: studentGender });
     setHistoryVisible(true);
   }
 
   async function handleEditStudent() {
-    if (!editStudentId || !editStudentName.trim()) return;
+    if (!editStudentId || !editStudent.name.trim() || !editStudent.gender) {
+      Alert.alert("Error", "Please enter name and select gender.");
+      return;
+    }
     try {
-      await updateStudentName(editStudentId, editStudentName.trim());
-      Alert.alert("Student Updated Successfuly");
+      await updateStudent(editStudentId, editStudent.name, editStudent.gender);
+      Alert.alert("Student Updated Successfully");
       setEditVisible(false);
       setEditStudentId(null);
-      setEditStudentName("");
+      setEditStudent({ id: null, name: "", gender: "" });
       refresh();
     } catch (error) {
       console.error("Error:", error);
@@ -114,25 +132,30 @@ export default function ClassDetail() {
     }
   }
 
+
   function openEditModal(student: any) {
     setEditStudentId(student.id);
-    setEditStudentName(student.name);
+    setEditStudent({
+      id: student.id,
+      name: student.name,
+      gender: student.gender
+    });
     setEditVisible(true);
   }
 
   return (
     <Provider>
       <Navbar />
-      <View style={{ flex: 1, padding: 20 }}>
+      <View style={{ flex: 1, padding: 20, backgroundColor: isDark ? "#18191A" : "#fff" }}>
 
         <View style={{ marginTop: 20 }}>
-          <Text style={{ fontSize: 20 }}>
+          <Text style={{ fontSize: 20, color: isDark ? "#fff" : "#222" }}>
             Today: {new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: '2-digit' }).format(new Date(dateToday))}
           </Text>
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 20 }}>
-          <Text style={{ fontSize: 24, fontWeight: "bold" }}>{name}</Text>
+          <Text style={{ fontSize: 24, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>{name}</Text>
           <Button mode="contained" onPress={() => setVisible(true)}>Add Student</Button>
 
         </View>
@@ -173,7 +196,7 @@ export default function ClassDetail() {
           style={{ marginTop: 20 }}
           ListEmptyComponent={
             <View style={{ padding: 30, alignItems: "center" }}>
-              <Text style={{ color: "gray", fontSize: 18 }}>No students found</Text>
+              <Text style={{ fontSize: 18, color: isDark ? "#fff" : "#222" }}>No students found</Text>
             </View>
           }
           data={filteredStudents}
@@ -187,7 +210,7 @@ export default function ClassDetail() {
               justifyContent: "space-between",
               alignItems: "center"
             }}>
-              <Text style={{ fontSize: 12 }}>{item.name}</Text>
+              <Text style={{ fontSize: 12, color: isDark ? "#fff" : "#222" }}>{item.name}</Text>
 
               {item.status ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -206,8 +229,8 @@ export default function ClassDetail() {
                     mode="contained-tonal" // optional background style
                     onPress={() =>
                       Alert.alert(
-                        "Confirm Undo",
-                        `Are you sure you want to change ${item.name}'s status?`,
+                        "Confirm Change Status",
+                        `Are you sure you want to change ${item.name}'s status to ${item.status === "present" ? "absent" : "present"}?`,
                         [
                           { text: "Cancel", style: "cancel" },
                           {
@@ -227,7 +250,7 @@ export default function ClassDetail() {
                     icon="history"      // 🔹 or try "clock-outline", "calendar-clock"
                     size={20}
                     mode="contained-tonal" // optional background
-                    onPress={() => showHistory(item.id, item.name)}
+                    onPress={() => showHistory(item.id, item.name, item.gender)}
                   />
                   <IconButton
                     icon="account-edit"    // ✏️ student name edit
@@ -259,7 +282,7 @@ export default function ClassDetail() {
                     icon="history"      // 🔹 or try "clock-outline", "calendar-clock"
                     size={20}
                     mode="contained-tonal" // optional background
-                    onPress={() => showHistory(item.id, item.name)}
+                    onPress={() => showHistory(item.id, item.name, item.gender)}
                   />
                   <IconButton
                     icon="account-edit"    // ✏️ student name edit
@@ -275,37 +298,36 @@ export default function ClassDetail() {
 
         <Portal>
           <Modal visible={visible} onDismiss={() => setVisible(false)}
-            contentContainerStyle={{ backgroundColor: "white", padding: 20, marginHorizontal: 20, borderRadius: 8 }}>
-            <Text style={{ marginBottom: 10 }}>Enter Student Name</Text>
+            contentContainerStyle={{ backgroundColor: isDark ? "#18191A" : "#fff", padding: 20, marginHorizontal: 20, borderRadius: 8 }}>
+            <Text style={{ marginBottom: 10, color: isDark ? "#fff" : "#222" }}>Enter Student Name</Text>
             <TextInput
               mode="outlined"
               value={studentName}
               onChangeText={setStudentName}
-              placeholder="Student Full Name"
+              placeholder="Dela Cruz, Juan B."
               style={{ marginBottom: 20 }}
             />
 
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
               <Button
                 style={{
-                  backgroundColor: studentData.gender === "male" ? "blue" : "pink",
                   flex: 1,
                   marginRight: 8,
                 }}
+                mode={studentData.gender === "male" ? "contained" : "outlined"}
                 onPress={() => handleGenderChange("male")}
               >
-                <Text style={{ color: "white" }}>Male</Text>
+                <Text style={{ color: isDark ? "#fff" : "#222" }}>Male</Text>
               </Button>
               <Button
-                mode="contained"
                 style={{
-                  backgroundColor: studentData.gender === "female" ? "blue" : "pink",
                   flex: 1,
                   marginLeft: 8,
                 }}
+                mode={studentData.gender === "female" ? "contained" : "outlined"}
                 onPress={() => handleGenderChange("female")}
               >
-                <Text style={{ color: "white" }}>Female</Text>
+                <Text style={{ color: isDark ? "#fff" : "#222" }}>Female</Text>
               </Button>
             </View>
 
@@ -322,18 +344,23 @@ export default function ClassDetail() {
             visible={historyVisible}
             onDismiss={() => setHistoryVisible(false)}
             contentContainerStyle={{
-              backgroundColor: "white",
+              backgroundColor: isDark ? "#18191A" : "#fff",
               padding: 20,
               marginHorizontal: 20,
               borderRadius: 8,
               maxHeight: "80%"
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
-              Attendance History - {historyName}
+            <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10, color: isDark ? "#fff" : "#222" }}>
+              Attendance History
             </Text>
+            <View>
+              <Text style={{ color: isDark ? "#fff" : "#222", marginBottom: 10, fontSize: 20 }}>
+                {historyName.name} ({historyName.gender === "male" ? "Male" : "Female"})
+              </Text>
+            </View>
             {historyData.length === 0 ? (
-              <Text>No attendance records found</Text>
+              <Text style={{ color: isDark ? "#fff" : "#222" }}>No attendance records found</Text>
             ) : (
               <ScrollView style={{ maxHeight: 300 }}>
                 {historyData.map((rec, idx) => (
@@ -344,10 +371,10 @@ export default function ClassDetail() {
                       justifyContent: "space-between",
                       paddingVertical: 6,
                       borderBottomWidth: 1,
-                      borderBottomColor: "#eee"
+                      borderBottomColor: isDark ? "#444" : "#ccc",
                     }}
                   >
-                    <Text>{new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "2-digit" }).format(new Date(rec.date))}</Text>
+                    <Text style={{ color: isDark ? "#fff" : "#222" }}>{new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "2-digit" }).format(new Date(rec.date))}</Text>
                     <Text
                       style={{
                         color: rec.status === "present" ? "green" : "red",
@@ -372,20 +399,38 @@ export default function ClassDetail() {
             visible={editVisible}
             onDismiss={() => setEditVisible(false)}
             contentContainerStyle={{
-              backgroundColor: "white",
+              backgroundColor: isDark ? "#18191A" : "#fff",
               padding: 20,
               marginHorizontal: 20,
               borderRadius: 8
             }}
           >
-            <Text style={{ marginBottom: 10 }}>Edit Student Name</Text>
+            <Text style={{ marginBottom: 10, color: isDark ? "#fff" : "#222" }}>Edit Student Name</Text>
             <TextInput
               mode="outlined"
-              value={editStudentName}
-              onChangeText={setEditStudentName}
+              value={editStudent.name}
+              onChangeText={name => setEditStudent({ ...editStudent, name })}
               placeholder="Student Full Name"
               style={{ marginBottom: 20 }}
             />
+
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
+              <Button
+                style={{ flex: 1, marginRight: 8 }}
+                mode={editStudent.gender === "male" ? "contained" : "outlined"}
+                onPress={() => handleEditGenderChange("male")}
+              >
+                <Text style={{ color: isDark ? "#fff" : "#222" }}>Male</Text>
+              </Button>
+              <Button
+                style={{ flex: 1, marginLeft: 8 }}
+                mode={editStudent.gender === "female" ? "contained" : "outlined"}
+                onPress={() => handleEditGenderChange("female")}
+              >
+                <Text style={{ color: isDark ? "#fff" : "#222" }}>Female</Text>
+              </Button>
+            </View>
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <Button onPress={() => setEditVisible(false)} style={{ marginRight: 10 }}>
                 Cancel
@@ -395,6 +440,7 @@ export default function ClassDetail() {
               </Button>
             </View>
           </Modal>
+
 
         </Portal>
       </View>

@@ -1,11 +1,13 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
+import { addClass as addClassDB, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, View } from "react-native";
+import { Alert, FlatList, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
   const [className, setClassName] = useState("");
@@ -51,12 +53,11 @@ export default function Index() {
 
   return (
     <Provider>
-
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? "#18191A" : "#fff" }}>
         <Navbar />
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", margin: 10 }}>
-          <Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", margin: 10, }}>
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>
             {today.toDateString()}
           </Text>
           <Button onPress={toggleOverlay} mode="contained">Add Class</Button>
@@ -74,7 +75,7 @@ export default function Index() {
                 borderRadius: 8,
                 borderColor: "gray",
                 borderWidth: 1,
-                backgroundColor: "#f0f0f0",
+                backgroundColor: isDark ? "#333" : "#fff",
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -84,7 +85,7 @@ export default function Index() {
                 href={{ pathname: "/class/[id]", params: { id: item.id, name: item.name } }}
                 style={{ flex: 1 }}
               >
-                <Text>{item.name}</Text>
+                <Text style={{ fontSize: 18, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>{item.name}</Text>
               </Link>
 
               <IconButton
@@ -92,7 +93,7 @@ export default function Index() {
                 mode="contained"
                 iconColor="red"
                 onPress={() => {
-                  Alert.alert("Delete Class", "Are you sure?", [
+                  Alert.alert("Delete Class", "Are you sure you want to delete this class? This action cannot be undone.", [
                     { text: "Cancel" },
                     {
                       text: "Delete",
@@ -106,12 +107,9 @@ export default function Index() {
                   ]);
                 }}
               />
-
-
               <IconButton
                 icon="pencil"
-                mode="contained"
-                iconColor="blue"
+                mode="contained-tonal"
                 onPress={() => {
                   setEditClassId(item.id);
                   setClassName(item.name);
@@ -168,9 +166,13 @@ export default function Index() {
           </Modal>
         </Portal>
 
-        <Button mode="contained" onPress={async () => await clearAllData()} style={{ margin: 50 }}>
+        {/* <Button mode="contained" onPress={async () => await clearAllData()} style={{ margin: 50 }}>
           clear data
         </Button>
+
+        <Button mode="contained" style={{ margin: 50 }} onPress={async () => { await seedDatabase(); Alert.alert("Seeded!") }}>
+          Seed Example Data
+        </Button> */}
       </View>
     </Provider>
   );

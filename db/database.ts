@@ -10,6 +10,7 @@ export const initDB = async () => {
   await db.execAsync(createTables);
 };
 
+
 // ✅ Classes
 export const addClass = async (name: string) => {
   await db.runAsync("INSERT INTO classes (name) VALUES (?)", [name]);
@@ -39,9 +40,16 @@ export const getStudentsByClass = async (classId: number) =>
     [classId]
   );
 
-export const updateStudentName = async (id: number, name: string) => {
-  await db.runAsync("UPDATE students SET name = ? WHERE id = ?", name, id);
+
+export const updateStudent = async (id: number, name: string, gender: string) => {
+  await db.runAsync(
+    "UPDATE students SET name = ?, gender = ? WHERE id = ?",
+    name,
+    gender,
+    id
+  );
 };
+
 
 
 // ✅ Attendance
@@ -97,14 +105,59 @@ export const getAttendanceByStudent = async (studentId: number) => {
 };
 
 
-// ✅ Clear All
-export const clearAllData = async () => {
-  await db.execAsync(`
-    DROP TABLE IF EXISTS attendance;
-    DROP TABLE IF EXISTS students;
-    DROP TABLE IF EXISTS classes;
-  `);
-  await db.execAsync(createTables);
-};
+// // ✅ Clear All
+// export const clearAllData = async () => {
+//   await db.execAsync(`
+//     DROP TABLE IF EXISTS attendance;
+//     DROP TABLE IF EXISTS students;
+//     DROP TABLE IF EXISTS classes;
+//   `);
+//   await db.execAsync(createTables);
+// };
+
+
+// export const seedDatabase = async () => {
+//   // Sample students (assuming IDs 1–4)
+//   const studentIds = [1, 2, 3, 4];
+//   const startDate = new Date("2025-10-01");
+
+//   // Insert sample classes
+//   await db.execAsync(`
+//     INSERT INTO classes (name) VALUES 
+//     ('Section A'),
+//     ('Section B');
+//   `);
+
+//   // Insert sample students
+//   await db.execAsync(`
+//     INSERT INTO students (name, class_id, gender) VALUES
+//     ('Juan Dela Cruz', 1, 'male'),
+//     ('Maria Santos', 1, 'female'),
+//     ('Pedro Reyes', 2, 'male'),
+//     ('Anna Lopez', 2, 'female');
+//   `);
+
+//   // Build bulk attendance insert statements
+//   let attendanceSQL = "INSERT INTO attendance (student_id, date, status) VALUES";
+//   let values = [];
+
+//   for (let i = 0; i < 10; i++) { // 10 days
+//     const dateString = new Date(startDate.getTime() + i * 86400000)
+//       .toISOString()
+//       .split("T")[0]; // e.g., '2025-10-01'
+//     for (const id of studentIds) {
+//       // Alternate status for some randomness
+//       const status = (i + id) % 2 === 0 ? "present" : "absent";
+//       values.push(`(${id}, '${dateString}', '${status}')`);
+//     }
+//   }
+//   attendanceSQL += values.join(",") + ";";
+
+//   // Insert bulk attendance
+//   await db.execAsync(attendanceSQL);
+
+//   console.log("Seeded 10 attendance records per student!");
+// };
+
 
 export default db;
