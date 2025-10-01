@@ -1,5 +1,5 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
+import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, useColorScheme, View } from "react-native";
@@ -31,22 +31,32 @@ export default function Index() {
     if (className.trim().length === 0) return;
     try {
       if (editClassId) {
-        await updateClass(editClassId, className); // Update if editing
-        Alert.alert("Class Updated Successfuly");
+        const response = await updateClass(editClassId, className); // Update if editing
+        if (response.success) {
+          Alert.alert("Class Updated Successfully");
+        } else {
+          Alert.alert("Error", response.message || "Class already exists");
+        }
       } else {
-        await addClassDB(className); // Add if creating
-        Alert.alert("Class Added Successfuly");
+        const response = await addClassDB(className); // Add if creating.
+        if (response.success) {
+          Alert.alert("Class Added Successfully");
+        } else {
+          Alert.alert("Error", response.message || "Class already exists");
+          return; // Don't continue to refresh/reset if not added
+        }
       }
       const updated = await getClasses();
       setClasses(updated);
       setClassName("");
-      setEditClassId(null); // Reset edit state
+      setEditClassId(null);
       setVisible(false);
     } catch (error) {
       console.error("Error:", error);
       Alert.alert("Error", "An error occurred while saving the class.");
     }
   }
+
 
 
   const toggleOverlay = () => setVisible(!visible);
@@ -130,14 +140,14 @@ export default function Index() {
               setEditClassId(null); // Reset edit state on close
             }}
             contentContainerStyle={{
-              backgroundColor: "white",
+              backgroundColor: isDark ? "#18191A" : "#fff",
               padding: 20,
               marginHorizontal: 20,
               borderRadius: 8
             }}
           >
-            <Text style={{ marginBottom: 10 }}>
-              {editClassId ? "Edit Class Name" : "Enter Class Name"}
+            <Text style={{ marginBottom: 10, color: isDark ? "#fff" : "#222" }}>
+              {editClassId ? "Edit Class" : "Adding Class"}
             </Text>
             <TextInput
               mode="outlined"
@@ -165,6 +175,20 @@ export default function Index() {
             </View>
           </Modal>
         </Portal>
+
+        <Button mode="contained" onPress={async () => {
+          try {
+            await clearAllData();
+            Alert.alert("Data cleared successfully!");
+            const updated = await getClasses();
+            setClasses(updated);
+          } catch (error) {
+            console.error("Error clearing data:", error);
+            Alert.alert("Error", "An error occurred while clearing data.");
+          }
+        }} style={{ margin: 50 }}>
+          Clear Data
+        </Button>
 
         {/* <Button mode="contained" onPress={async () => await clearAllData()} style={{ margin: 50 }}>
           clear data

@@ -80,15 +80,20 @@ export default function ClassDetail() {
     }
 
     try {
-      await addStudent(studentName, Number(id), studentData.gender);
-      Alert.alert("Student Added Successfuly");
-      setStudentName("");
-      setStudentData({ id: null, name: "", gender: "" }); // Reset form
-      setVisible(false);
-      refresh();
+      const result = await addStudent(studentName, Number(id), studentData.gender);
+      if (result.success) {
+        Alert.alert("Student Added Successfully");
+        setStudentName("");
+        setStudentData({ id: null, name: "", gender: "" }); // Reset form
+        setVisible(false);
+        refresh();
+      } else {
+        Alert.alert("Error", result.message);
+      }
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An error occurred while saving the student.");
+      const e = error as Error;
+      Alert.alert("Error", e.message || "An error occurred while saving the student.");
     }
   }
 
@@ -120,12 +125,17 @@ export default function ClassDetail() {
       return;
     }
     try {
-      await updateStudent(editStudentId, editStudent.name, editStudent.gender);
-      Alert.alert("Student Updated Successfully");
-      setEditVisible(false);
-      setEditStudentId(null);
-      setEditStudent({ id: null, name: "", gender: "" });
-      refresh();
+      const response = await updateStudent(editStudentId, editStudent.name, editStudent.gender);
+      if (response.success) {
+        Alert.alert("Student Updated Successfully");
+        setEditVisible(false);
+        setEditStudentId(null);
+        setEditStudent({ id: null, name: "", gender: "" });
+        refresh();
+      }
+      else {
+        Alert.alert("Error", response.message);
+      }
     } catch (error) {
       console.error("Error:", error);
       Alert.alert("Error", "An error occurred while saving the student.");

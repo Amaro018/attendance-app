@@ -1,6 +1,9 @@
 import * as SQLite from "expo-sqlite";
 import { createTables } from "./schema";
 
+
+// ✅ Classes
+
 const db = SQLite.openDatabaseSync("attendance.db");
 
 
@@ -10,28 +13,57 @@ export const initDB = async () => {
   await db.execAsync(createTables);
 };
 
-
-// ✅ Classes
 export const addClass = async (name: string) => {
+  const existing = await db.getAllAsync<any>("SELECT * FROM classes WHERE name = ?", [name]);
+  if (existing.length > 0) {
+    // Return failure, don't show alert here!
+    return { success: false, message: "Class already exists" };
+  }
   await db.runAsync("INSERT INTO classes (name) VALUES (?)", [name]);
+  return { success: true };
 };
+
+
 export const getClasses = async () =>
   db.getAllAsync<any>("SELECT * FROM classes");
 
+// In your database utility file:
 export const updateClass = async (id: number, name: string) => {
-  await db.runAsync("UPDATE classes SET name = ? WHERE id = ?", name, id);
+  // Optionally, check for duplicate class name if needed
+  const existing = await db.getAllAsync<any>("SELECT * FROM classes WHERE name = ? AND id != ?", [name, id]);
+  if (existing.length > 0) {
+    return { success: false, message: "Class name already exists" };
+  }
+
+  await db.runAsync("UPDATE classes SET name = ? WHERE id = ?", [name, id]);
+  return { success: true };
 };
+
 export const deleteClass = async (id: number) =>
   db.runAsync("DELETE FROM classes WHERE id = ?", [id]);
 
 // ✅ Students
 export const addStudent = async (name: string, class_id: number, gender: string) => {
-  console.log(name, class_id, gender);
+  // First, check for duplicate
+  const existing = await db.getAllAsync<any>(
+    "SELECT * FROM students WHERE name = ? AND class_id = ?",
+    [name, class_id]
+  );
+  if (existing.length > 0) {
+    // Student with this name already exists in this class
+    return { success: false, message: "Student already exists in this class." };
+  }
+
+  // Insert student if not duplicate
   await db.runAsync(
     "INSERT INTO students (name, class_id, gender) VALUES (?, ?, ?)",
     [name, class_id, gender]
   );
+  return { success: true };
 };
+
+
+
 export const getStudents = async () =>
   db.getAllAsync<any>("SELECT * FROM students");
 export const getStudentsByClass = async (classId: number) =>
@@ -42,13 +74,34 @@ export const getStudentsByClass = async (classId: number) =>
 
 
 export const updateStudent = async (id: number, name: string, gender: string) => {
+  // First, get this student's class_id
+  const thisStudent = await db.getAllAsync<any>(
+    "SELECT class_id FROM students WHERE id = ?",
+    [id]
+  );
+
+  if (!thisStudent.length) {
+    return { success: false, message: "Student not found." };
+  }
+  const class_id = thisStudent[0].class_id;
+
+  // Check for duplicate name in the same class (excluding the current student)
+  const duplicate = await db.getAllAsync<any>(
+    "SELECT id FROM students WHERE name = ? AND class_id = ? AND id != ?",
+    [name, class_id, id]
+  );
+  if (duplicate.length > 0) {
+    return { success: false, message: "Another student with that name already exists in this class." };
+  }
+
+  // Perform update
   await db.runAsync(
     "UPDATE students SET name = ?, gender = ? WHERE id = ?",
-    name,
-    gender,
-    id
+    [name, gender, id]
   );
+  return { success: true };
 };
+
 
 
 
@@ -105,15 +158,15 @@ export const getAttendanceByStudent = async (studentId: number) => {
 };
 
 
-// // ✅ Clear All
-// export const clearAllData = async () => {
-//   await db.execAsync(`
-//     DROP TABLE IF EXISTS attendance;
-//     DROP TABLE IF EXISTS students;
-//     DROP TABLE IF EXISTS classes;
-//   `);
-//   await db.execAsync(createTables);
-// };
+// ✅ Clear All
+export const clearAllData = async () => {
+  await db.execAsync(`
+    DROP TABLE IF EXISTS attendance;
+    DROP TABLE IF EXISTS students;
+    DROP TABLE IF EXISTS classes;
+  `);
+  await db.execAsync(createTables);
+};
 
 
 // export const seedDatabase = async () => {
