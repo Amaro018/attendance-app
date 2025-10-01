@@ -11,14 +11,9 @@ import React, { useEffect, useState } from "react";
 import { Alert, FlatList, ScrollView, Text, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, TextInput } from "react-native-paper";
 
-
-
-
 export default function ClassDetail() {
-
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-
   const dateToday = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const { id, name } = useLocalSearchParams();
   const [students, setStudents] = useState<any[]>([]);
@@ -31,14 +26,14 @@ export default function ClassDetail() {
     gender: "",
   });
 
+  // Modal for selecting attendance status
+  const [isOpenStatusModal, setIsOpenStatusModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-  // ✅ history modal states
+  // History modal states
   const [historyVisible, setHistoryVisible] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyName, setHistoryName] = useState({
-    name: "",
-    gender: "",
-  });
+  const [historyName, setHistoryName] = useState({ name: "", gender: "" });
 
   const [editVisible, setEditVisible] = useState(false);
   const [editStudentId, setEditStudentId] = useState<number | null>(null);
@@ -51,7 +46,6 @@ export default function ClassDetail() {
   const [sortOrder, setSortOrder] = useState("asc"); // "asc" or "desc"
   const [genderFilter, setGenderFilter] = useState(""); // "", "male", "female"
 
-
   const filteredStudents = students
     .filter((student) => !genderFilter || student.gender === genderFilter)
     .sort((a, b) =>
@@ -59,8 +53,6 @@ export default function ClassDetail() {
         ? a.name.localeCompare(b.name)
         : b.name.localeCompare(a.name)
     );
-
-
 
   async function refresh() {
     if (id) {
@@ -97,7 +89,6 @@ export default function ClassDetail() {
     }
   }
 
-
   function handleGenderChange(gender: string) {
     setStudentData({ ...studentData, gender });
   }
@@ -106,12 +97,11 @@ export default function ClassDetail() {
     setEditStudent({ ...editStudent, gender });
   }
 
-  async function handleMark(studentId: number, status: 'present' | 'absent') {
+  async function handleMark(studentId: number, status: 'present' | 'absent' | 'excused' | 'cutting') {
     await markAttendance(studentId, dateToday, status);
     refresh();
   }
 
-  // ✅ fetch and show history
   async function showHistory(studentId: number, studentName: string, studentGender: string) {
     const records = await getAttendanceByStudent(studentId);
     setHistoryData(records);
@@ -142,7 +132,6 @@ export default function ClassDetail() {
     }
   }
 
-
   function openEditModal(student: any) {
     setEditStudentId(student.id);
     setEditStudent({
@@ -153,11 +142,20 @@ export default function ClassDetail() {
     setEditVisible(true);
   }
 
+  function openStatusModal(student: any) {
+    setSelectedStudent(student);
+    setIsOpenStatusModal(true);
+  }
+
+  function closeStatusModal() {
+    setIsOpenStatusModal(false);
+    setSelectedStudent(null);
+  }
+
   return (
     <Provider>
       <Navbar />
       <View style={{ flex: 1, padding: 20, backgroundColor: isDark ? "#18191A" : "#fff" }}>
-
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: 20, color: isDark ? "#fff" : "#222" }}>
             Today: {new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: '2-digit' }).format(new Date(dateToday))}
@@ -167,7 +165,6 @@ export default function ClassDetail() {
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 20 }}>
           <Text style={{ fontSize: 24, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>{name}</Text>
           <Button mode="contained" onPress={() => setVisible(true)}>Add Student</Button>
-
         </View>
 
         <View style={{ flexDirection: 'row', margin: 10 }}>
@@ -201,7 +198,6 @@ export default function ClassDetail() {
           </Button>
         </View>
 
-
         <FlatList
           style={{ marginTop: 20 }}
           ListEmptyComponent={
@@ -221,49 +217,33 @@ export default function ClassDetail() {
               alignItems: "center"
             }}>
               <Text style={{ fontSize: 12, color: isDark ? "#fff" : "#222" }}>{item.name}</Text>
-
               {item.status ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Text
                     style={{
                       fontSize: 12,
-                      color: item.status === "present" ? "green" : "red"
+                      color: item.status === "present" ? "green"
+                        : item.status === "excused" ? "goldenrod"
+                          : item.status === "cutting" ? "orangered"
+                            : "red"
                     }}
                   >
                     {item.status.toUpperCase()}
                   </Text>
-
                   <IconButton
-                    icon="pencil"          // 🔹 MaterialCommunity icon name (e.g. "pencil", "undo", "edit")
-                    size={20}              // icon size
-                    mode="contained-tonal" // optional background style
-                    onPress={() =>
-                      Alert.alert(
-                        "Confirm Change Status",
-                        `Are you sure you want to change ${item.name}'s status to ${item.status === "present" ? "absent" : "present"}?`,
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Yes",
-                            style: "destructive",
-                            onPress: () =>
-                              handleMark(
-                                item.id,
-                                item.status === "present" ? "absent" : "present"
-                              ),
-                          },
-                        ]
-                      )
-                    }
+                    icon="menu"
+                    size={20}
+                    mode="contained-tonal"
+                    onPress={() => openStatusModal(item)}
                   />
                   <IconButton
-                    icon="history"      // 🔹 or try "clock-outline", "calendar-clock"
+                    icon="history"
                     size={20}
-                    mode="contained-tonal" // optional background
+                    mode="contained-tonal"
                     onPress={() => showHistory(item.id, item.name, item.gender)}
                   />
                   <IconButton
-                    icon="account-edit"    // ✏️ student name edit
+                    icon="account-edit"
                     size={20}
                     mode="contained-tonal"
                     onPress={() => openEditModal(item)}
@@ -272,30 +252,21 @@ export default function ClassDetail() {
               ) : (
                 <View style={{ flexDirection: "row", gap: 2 }}>
                   <IconButton
-                    icon="check-circle"      // ✅ Present icon
+                    icon="menu"
                     size={20}
                     mode="contained"
-                    containerColor="green"   // background circle
-                    iconColor="white"        // icon color
-                    onPress={() => handleMark(item.id, "present")}
-                  />
-
-                  <IconButton
-                    icon="close-circle"      // ❌ Absent icon
-                    size={20}
-                    mode="contained"
-                    containerColor="red"
+                    containerColor="dodgerblue"
                     iconColor="white"
-                    onPress={() => handleMark(item.id, "absent")}
+                    onPress={() => openStatusModal(item)}
                   />
                   <IconButton
-                    icon="history"      // 🔹 or try "clock-outline", "calendar-clock"
+                    icon="history"
                     size={20}
-                    mode="contained-tonal" // optional background
+                    mode="contained-tonal"
                     onPress={() => showHistory(item.id, item.name, item.gender)}
                   />
                   <IconButton
-                    icon="account-edit"    // ✏️ student name edit
+                    icon="account-edit"
                     size={20}
                     mode="contained-tonal"
                     onPress={() => openEditModal(item)}
@@ -307,6 +278,7 @@ export default function ClassDetail() {
         />
 
         <Portal>
+          {/* Student Add Modal */}
           <Modal visible={visible} onDismiss={() => setVisible(false)}
             contentContainerStyle={{ backgroundColor: isDark ? "#18191A" : "#fff", padding: 20, marginHorizontal: 20, borderRadius: 8 }}>
             <Text style={{ marginBottom: 10, color: isDark ? "#fff" : "#222" }}>Enter Student Name</Text>
@@ -317,39 +289,68 @@ export default function ClassDetail() {
               placeholder="Dela Cruz, Juan B."
               style={{ marginBottom: 20 }}
             />
-
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
               <Button
-                style={{
-                  flex: 1,
-                  marginRight: 8,
-                }}
+                style={{ flex: 1, marginRight: 8 }}
                 mode={studentData.gender === "male" ? "contained" : "outlined"}
                 onPress={() => handleGenderChange("male")}
               >
                 <Text style={{ color: isDark ? "#fff" : "#222" }}>Male</Text>
               </Button>
               <Button
-                style={{
-                  flex: 1,
-                  marginLeft: 8,
-                }}
+                style={{ flex: 1, marginLeft: 8 }}
                 mode={studentData.gender === "female" ? "contained" : "outlined"}
                 onPress={() => handleGenderChange("female")}
               >
                 <Text style={{ color: isDark ? "#fff" : "#222" }}>Female</Text>
               </Button>
             </View>
-
-
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <Button onPress={() => setVisible(false)} style={{ marginRight: 10 }}>Cancel</Button>
               <Button mode="contained" onPress={handleAddStudent}>Add</Button>
             </View>
           </Modal>
 
+          {/* Status Modal */}
+          <Modal
+            visible={isOpenStatusModal}
+            onDismiss={closeStatusModal}
+            contentContainerStyle={{
+              backgroundColor: isDark ? "#18191A" : "#fff",
+              padding: 20,
+              marginHorizontal: 20,
+              borderRadius: 8,
+              alignItems: "center"
+            }}
+          >
+            <Text style={{ fontSize: 18, marginBottom: 10, color: isDark ? "#fff" : "#222" }}>
+              Set Status for {selectedStudent?.name}
+            </Text>
+            {["present", "absent", "excused", "cutting"].map(status => (
+              <Button
+                key={status}
+                mode="contained"
+                style={{ marginVertical: 6, width: 140 }}
+                buttonColor={
+                  status === "present" ? "green"
+                    : status === "absent" ? "red"
+                      : status === "excused" ? "gold"
+                        : "orangered"
+                }
+                onPress={async () => {
+                  await handleMark(selectedStudent.id, status as "present" | "absent" | "excused" | "cutting");
+                  closeStatusModal();
+                }}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Button>
+            ))}
+            <Button onPress={closeStatusModal} style={{ marginTop: 10 }}>
+              Cancel
+            </Button>
+          </Modal>
 
-          {/* ✅ History Modal */}
+          {/* History Modal */}
           <Modal
             visible={historyVisible}
             onDismiss={() => setHistoryVisible(false)}
@@ -387,7 +388,10 @@ export default function ClassDetail() {
                     <Text style={{ color: isDark ? "#fff" : "#222" }}>{new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "2-digit" }).format(new Date(rec.date))}</Text>
                     <Text
                       style={{
-                        color: rec.status === "present" ? "green" : "red",
+                        color: rec.status === "present" ? "green"
+                          : rec.status === "excused" ? "goldenrod"
+                            : rec.status === "cutting" ? "orangered"
+                              : "red",
                         fontWeight: "bold"
                       }}
                     >
@@ -404,7 +408,7 @@ export default function ClassDetail() {
             </View>
           </Modal>
 
-
+          {/* Edit Modal */}
           <Modal
             visible={editVisible}
             onDismiss={() => setEditVisible(false)}
@@ -423,7 +427,6 @@ export default function ClassDetail() {
               placeholder="Student Full Name"
               style={{ marginBottom: 20 }}
             />
-
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
               <Button
                 style={{ flex: 1, marginRight: 8 }}
@@ -440,7 +443,6 @@ export default function ClassDetail() {
                 <Text style={{ color: isDark ? "#fff" : "#222" }}>Female</Text>
               </Button>
             </View>
-
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <Button onPress={() => setEditVisible(false)} style={{ marginRight: 10 }}>
                 Cancel
@@ -450,8 +452,6 @@ export default function ClassDetail() {
               </Button>
             </View>
           </Modal>
-
-
         </Portal>
       </View>
     </Provider>

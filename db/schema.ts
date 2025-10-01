@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   student_id INTEGER NOT NULL,
   date TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('present','absent')),
+  status TEXT NOT NULL CHECK (status IN ('present','absent', 'excused', 'cutting')),
   UNIQUE(student_id, date),                 -- one record per student per day
   FOREIGN KEY (student_id) REFERENCES students(id)
 );

@@ -109,7 +109,7 @@ export const updateStudent = async (id: number, name: string, gender: string) =>
 export const markAttendance = async (
   studentId: number,
   date: string,
-  status: "present" | "absent"
+  status: "present" | "absent" | "excused" | "cutting"
 ) => {
   await db.runAsync(
     `INSERT OR REPLACE INTO attendance (student_id, date, status)

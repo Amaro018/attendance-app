@@ -190,13 +190,9 @@ export default function Index() {
           Clear Data
         </Button>
 
-        {/* <Button mode="contained" onPress={async () => await clearAllData()} style={{ margin: 50 }}>
-          clear data
-        </Button>
-
-        <Button mode="contained" style={{ margin: 50 }} onPress={async () => { await seedDatabase(); Alert.alert("Seeded!") }}>
+        {/* <Button mode="contained" style={{ margin: 50 }} onPress={async () => { await seedDatabase(); Alert.alert("Seeded!") }}>
           Seed Example Data
-        </Button> */}
+        </Button>  */}
       </View>
     </Provider>
   );
