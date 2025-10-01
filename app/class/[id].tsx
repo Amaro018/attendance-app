@@ -8,7 +8,7 @@ import {
 } from "@/db/database";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, ScrollView, Text, useColorScheme, View } from "react-native";
+import { Alert, FlatList, ScrollView, Text, ToastAndroid, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, TextInput } from "react-native-paper";
 
 export default function ClassDetail() {
@@ -67,14 +67,22 @@ export default function ClassDetail() {
 
   async function handleAddStudent() {
     if (!studentName.trim() || !studentData.gender) {
-      Alert.alert("Error", "Please enter name and select gender.");
+      ToastAndroid.showWithGravity(
+        'Please enter name and select gender.',
+        ToastAndroid.SHORT,
+        ToastAndroid.CENTER
+      )
       return;
     }
 
     try {
       const result = await addStudent(studentName, Number(id), studentData.gender);
       if (result.success) {
-        Alert.alert("Student Added Successfully");
+        ToastAndroid.showWithGravity(
+          'Student Added Successfully',
+          ToastAndroid.SHORT,
+          ToastAndroid.TOP
+        )
         setStudentName("");
         setStudentData({ id: null, name: "", gender: "" }); // Reset form
         setVisible(false);
@@ -85,7 +93,11 @@ export default function ClassDetail() {
     } catch (error) {
       console.error("Error:", error);
       const e = error as Error;
-      Alert.alert("Error", e.message || "An error occurred while saving the student.");
+      ToastAndroid.showWithGravity(
+        e.message,
+        ToastAndroid.LONG,
+        ToastAndroid.CENTER
+      )
     }
   }
 
@@ -99,6 +111,11 @@ export default function ClassDetail() {
 
   async function handleMark(studentId: number, status: 'present' | 'absent' | 'excused' | 'cutting') {
     await markAttendance(studentId, dateToday, status);
+    ToastAndroid.showWithGravity(
+      `${status}`,
+      ToastAndroid.SHORT,
+      ToastAndroid.TOP
+    )
     refresh();
   }
 
@@ -111,24 +128,41 @@ export default function ClassDetail() {
 
   async function handleEditStudent() {
     if (!editStudentId || !editStudent.name.trim() || !editStudent.gender) {
-      Alert.alert("Error", "Please enter name and select gender.");
+      ToastAndroid.showWithGravity(
+        'Please enter name and select gender.',
+        ToastAndroid.SHORT,
+        ToastAndroid.CENTER
+      )
       return;
     }
     try {
       const response = await updateStudent(editStudentId, editStudent.name, editStudent.gender);
       if (response.success) {
-        Alert.alert("Student Updated Successfully");
+        ToastAndroid.showWithGravity(
+          'Student Updated Successfully',
+          ToastAndroid.SHORT,
+          ToastAndroid.TOP
+        )
         setEditVisible(false);
         setEditStudentId(null);
         setEditStudent({ id: null, name: "", gender: "" });
         refresh();
       }
       else {
-        Alert.alert("Error", response.message);
+        ToastAndroid.showWithGravity(
+          response.message ?? "An error occurred while updating the student.",
+          ToastAndroid.LONG,
+          ToastAndroid.CENTER
+        )
       }
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An error occurred while saving the student.");
+      const e = error as Error;
+      ToastAndroid.showWithGravity(
+        e.message,
+        ToastAndroid.LONG,
+        ToastAndroid.CENTER
+      )
     }
   }
 
@@ -454,6 +488,7 @@ export default function ClassDetail() {
           </Modal>
         </Portal>
       </View>
+
     </Provider>
   );
 }

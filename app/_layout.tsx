@@ -4,7 +4,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <Stack />
+
+      <Stack screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right', // Hides the header for all stack screens
+      }} />
     </SafeAreaProvider>
   )
 }

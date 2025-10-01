@@ -1,8 +1,8 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, clearAllData, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
+import { addClass as addClassDB, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, useColorScheme, View } from "react-native";
+import { Alert, FlatList, ToastAndroid, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
@@ -13,9 +13,9 @@ export default function Index() {
   const [className, setClassName] = useState("");
   const [visible, setVisible] = useState(false);
 
-  const [editVisible, setEditVisible] = useState(false);
+
   const [editClassId, setEditClassId] = useState<number | null>(null);
-  const [editClassName, setEditClassName] = useState("");
+
 
 
   const today = new Date();
@@ -33,16 +33,32 @@ export default function Index() {
       if (editClassId) {
         const response = await updateClass(editClassId, className); // Update if editing
         if (response.success) {
-          Alert.alert("Class Updated Successfully");
+          ToastAndroid.showWithGravity(
+            'Class Updated Successfully',
+            ToastAndroid.SHORT,
+            ToastAndroid.TOP,
+          );
         } else {
-          Alert.alert("Error", response.message || "Class already exists");
+          ToastAndroid.showWithGravity(
+            response.message ?? "An error occurred while updating the class.",
+            ToastAndroid.LONG,
+            ToastAndroid.TOP,
+          );
         }
       } else {
         const response = await addClassDB(className); // Add if creating.
         if (response.success) {
-          Alert.alert("Class Added Successfully");
+          ToastAndroid.showWithGravity(
+            'Class Added Successfully',
+            ToastAndroid.SHORT,
+            ToastAndroid.TOP,
+          );
         } else {
-          Alert.alert("Error", response.message || "Class already exists");
+          ToastAndroid.showWithGravity(
+            response.message ?? "An error occurred while saving the class.",
+            ToastAndroid.LONG,
+            ToastAndroid.TOP,
+          )
           return; // Don't continue to refresh/reset if not added
         }
       }
@@ -52,8 +68,11 @@ export default function Index() {
       setEditClassId(null);
       setVisible(false);
     } catch (error) {
-      console.error("Error:", error);
-      Alert.alert("Error", "An error occurred while saving the class.");
+      ToastAndroid.showWithGravity(
+        "An error occurred while saving the class.",
+        ToastAndroid.LONG,
+        ToastAndroid.TOP,
+      )
     }
   }
 
@@ -65,7 +84,6 @@ export default function Index() {
     <Provider>
       <View style={{ flex: 1, backgroundColor: isDark ? "#18191A" : "#fff" }}>
         <Navbar />
-
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", margin: 10, }}>
           <Text style={{ fontSize: 20, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>
             {today.toDateString()}
@@ -111,7 +129,11 @@ export default function Index() {
                         await deleteClass(item.id);
                         const updated = await getClasses();
                         setClasses(updated);
-                        Alert.alert("Class Deleted Successfuly");
+                        ToastAndroid.showWithGravity(
+                          'Class Deleted Successfully',
+                          ToastAndroid.SHORT,
+                          ToastAndroid.TOP
+                        )
                       },
                     },
                   ]);
@@ -176,7 +198,7 @@ export default function Index() {
           </Modal>
         </Portal>
 
-        <Button mode="contained" onPress={async () => {
+        {/* <Button mode="contained" onPress={async () => {
           try {
             await clearAllData();
             Alert.alert("Data cleared successfully!");
@@ -188,7 +210,7 @@ export default function Index() {
           }
         }} style={{ margin: 50 }}>
           Clear Data
-        </Button>
+        </Button> */}
 
         {/* <Button mode="contained" style={{ margin: 50 }} onPress={async () => { await seedDatabase(); Alert.alert("Seeded!") }}>
           Seed Example Data
