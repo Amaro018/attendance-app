@@ -1,8 +1,8 @@
 import Navbar from "@/components/navbar";
-import { addClass as addClassDB, deleteClass, getClasses, initDB, updateClass } from "@/db/database";
+import { addClass as addClassDB, deleteClass, getClasses, getStudentCountsByClass, initDB, updateClass } from "@/db/database";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, ToastAndroid, useColorScheme, View } from "react-native";
+import { Alert, FlatList, Platform, ToastAndroid, useColorScheme, View } from "react-native";
 import { Button, IconButton, Modal, Portal, Provider, Text, TextInput } from "react-native-paper";
 
 export default function Index() {
@@ -10,21 +10,26 @@ export default function Index() {
   const isDark = colorScheme === "dark";
 
   const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
+  const [studentCounts, setStudentCounts] = useState<Record<number, number>>({});
   const [className, setClassName] = useState("");
   const [visible, setVisible] = useState(false);
 
-
   const [editClassId, setEditClassId] = useState<number | null>(null);
 
-
-
   const today = new Date();
+
+  async function loadData() {
+    await initDB();
+    const stored = await getClasses();
+    setClasses(stored);
+    const counts = await getStudentCountsByClass();
+    const map: Record<number, number> = {};
+    for (const c of counts) map[c.class_id] = c.count;
+    setStudentCounts(map);
+  }
+
   useEffect(() => {
-    (async () => {
-      await initDB();
-      const stored = await getClasses(); // SELECT * FROM classes
-      setClasses(stored); // keep full objects {id, name}
-    })();
+    loadData();
   }, []);
 
   async function handleAddClass() {
@@ -33,46 +38,62 @@ export default function Index() {
       if (editClassId) {
         const response = await updateClass(editClassId, className); // Update if editing
         if (response.success) {
-          ToastAndroid.showWithGravity(
-            'Class Updated Successfully',
-            ToastAndroid.SHORT,
-            ToastAndroid.TOP,
-          );
+          if (Platform.OS === 'android') {
+            ToastAndroid.showWithGravity(
+              'Class Updated Successfully',
+              ToastAndroid.SHORT,
+              ToastAndroid.TOP,
+            );
+          }
         } else {
-          ToastAndroid.showWithGravity(
-            response.message ?? "An error occurred while updating the class.",
-            ToastAndroid.LONG,
-            ToastAndroid.TOP,
-          );
+          if (Platform.OS === 'android') {
+            ToastAndroid.showWithGravity(
+              response.message ?? "An error occurred while updating the class.",
+              ToastAndroid.LONG,
+              ToastAndroid.TOP,
+            );
+          } else {
+            alert(response.message ?? "An error occurred while updating the class.");
+          }
         }
       } else {
         const response = await addClassDB(className); // Add if creating.
         if (response.success) {
-          ToastAndroid.showWithGravity(
-            'Class Added Successfully',
-            ToastAndroid.SHORT,
-            ToastAndroid.TOP,
-          );
+          if (Platform.OS === 'android') {
+            ToastAndroid.showWithGravity(
+              'Class Added Successfully',
+              ToastAndroid.SHORT,
+              ToastAndroid.TOP,
+            );
+          }
         } else {
-          ToastAndroid.showWithGravity(
-            response.message ?? "An error occurred while saving the class.",
-            ToastAndroid.LONG,
-            ToastAndroid.TOP,
-          )
+          if (Platform.OS === 'android') {
+            ToastAndroid.showWithGravity(
+              response.message ?? "An error occurred while saving the class.",
+              ToastAndroid.LONG,
+              ToastAndroid.TOP,
+            )
+          } else {
+            alert(response.message ?? "An error occurred while saving the class.");
+          }
           return; // Don't continue to refresh/reset if not added
         }
       }
-      const updated = await getClasses();
-      setClasses(updated);
+      await loadData();
       setClassName("");
       setEditClassId(null);
       setVisible(false);
     } catch (error) {
-      ToastAndroid.showWithGravity(
-        "An error occurred while saving the class.",
-        ToastAndroid.LONG,
-        ToastAndroid.TOP,
-      )
+      if (Platform.OS === 'android') {
+        ToastAndroid.showWithGravity(
+          "An error occurred while saving the class.",
+          ToastAndroid.LONG,
+          ToastAndroid.TOP,
+        )
+      } else {
+        console.error(error);
+        alert("An error occurred while saving the class.");
+      }
     }
   }
 
@@ -113,7 +134,12 @@ export default function Index() {
                 href={{ pathname: "/class/[id]", params: { id: item.id, name: item.name } }}
                 style={{ flex: 1 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>{item.name}</Text>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: "bold", color: isDark ? "#fff" : "#222" }}>{item.name}</Text>
+                  <Text style={{ fontSize: 13, color: isDark ? "#aaa" : "#666", marginTop: 2 }}>
+                    {studentCounts[item.id] ?? 0} student{(studentCounts[item.id] ?? 0) !== 1 ? "s" : ""}
+                  </Text>
+                </View>
               </Link>
 
               <IconButton
@@ -127,13 +153,14 @@ export default function Index() {
                       text: "Delete",
                       onPress: async () => {
                         await deleteClass(item.id);
-                        const updated = await getClasses();
-                        setClasses(updated);
-                        ToastAndroid.showWithGravity(
-                          'Class Deleted Successfully',
-                          ToastAndroid.SHORT,
-                          ToastAndroid.TOP
-                        )
+                        await loadData();
+                        if (Platform.OS === 'android') {
+                          ToastAndroid.showWithGravity(
+                            'Class Deleted Successfully',
+                            ToastAndroid.SHORT,
+                            ToastAndroid.TOP
+                          )
+                        }
                       },
                     },
                   ]);

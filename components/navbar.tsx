@@ -1,10 +1,11 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Text, View, useColorScheme } from 'react-native';
 import { Button } from 'react-native-paper';
 
 export default function Navbar() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+  const router = useRouter();
 
   return (
     <View style={{
@@ -29,9 +30,7 @@ export default function Navbar() {
           </Link>
         </Text>
       </View>
-      <Link href="/">
-        <Button icon="home" mode="outlined" >home</Button>
-      </Link>
+      <Button icon="home" mode="outlined" onPress={() => router.replace('/')}>home</Button>
     </View >
   );
 }

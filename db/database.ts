@@ -1,19 +1,25 @@
 import * as SQLite from "expo-sqlite";
 import { createTables } from "./schema";
 
-
 // ✅ Classes
 
-const db = SQLite.openDatabaseSync("attendance.db");
+let dbInstance: SQLite.SQLiteDatabase | null = null;
 
-
+const getDB = async () => {
+  if (!dbInstance) {
+    dbInstance = await SQLite.openDatabaseAsync("attendance.db");
+  }
+  return dbInstance;
+};
 
 // ✅ Initialize DB tables
 export const initDB = async () => {
+  const db = await getDB();
   await db.execAsync(createTables);
 };
 
 export const addClass = async (name: string) => {
+  const db = await getDB();
   const existing = await db.getAllAsync<any>("SELECT * FROM classes WHERE name = ?", [name]);
   if (existing.length > 0) {
     // Return failure, don't show alert here!
@@ -24,11 +30,14 @@ export const addClass = async (name: string) => {
 };
 
 
-export const getClasses = async () =>
-  db.getAllAsync<any>("SELECT * FROM classes");
+export const getClasses = async () => {
+  const db = await getDB();
+  return db.getAllAsync<any>("SELECT * FROM classes");
+}
 
 // In your database utility file:
 export const updateClass = async (id: number, name: string) => {
+  const db = await getDB();
   // Optionally, check for duplicate class name if needed
   const existing = await db.getAllAsync<any>("SELECT * FROM classes WHERE name = ? AND id != ?", [name, id]);
   if (existing.length > 0) {
@@ -39,11 +48,20 @@ export const updateClass = async (id: number, name: string) => {
   return { success: true };
 };
 
-export const deleteClass = async (id: number) =>
-  db.runAsync("DELETE FROM classes WHERE id = ?", [id]);
+export const deleteClass = async (id: number) => {
+  const db = await getDB();
+  // Cascade: delete attendance for all students in class, then students, then class
+  await db.runAsync(
+    "DELETE FROM attendance WHERE student_id IN (SELECT id FROM students WHERE class_id = ?)",
+    [id]
+  );
+  await db.runAsync("DELETE FROM students WHERE class_id = ?", [id]);
+  return db.runAsync("DELETE FROM classes WHERE id = ?", [id]);
+}
 
 // ✅ Students
 export const addStudent = async (name: string, class_id: number, gender: string) => {
+  const db = await getDB();
   // First, check for duplicate
   const existing = await db.getAllAsync<any>(
     "SELECT * FROM students WHERE name = ? AND class_id = ?",
@@ -64,16 +82,21 @@ export const addStudent = async (name: string, class_id: number, gender: string)
 
 
 
-export const getStudents = async () =>
-  db.getAllAsync<any>("SELECT * FROM students");
-export const getStudentsByClass = async (classId: number) =>
-  db.getAllAsync<any>(
+export const getStudents = async () => {
+  const db = await getDB();
+  return db.getAllAsync<any>("SELECT * FROM students");
+}
+export const getStudentsByClass = async (classId: number) => {
+  const db = await getDB();
+  return db.getAllAsync<any>(
     "SELECT * FROM students WHERE class_id = ?",
     [classId]
   );
+}
 
 
 export const updateStudent = async (id: number, name: string, gender: string) => {
+  const db = await getDB();
   // First, get this student's class_id
   const thisStudent = await db.getAllAsync<any>(
     "SELECT class_id FROM students WHERE id = ?",
@@ -105,12 +128,26 @@ export const updateStudent = async (id: number, name: string, gender: string) =>
 
 
 
+export const deleteStudent = async (id: number) => {
+  const db = await getDB();
+  await db.runAsync("DELETE FROM attendance WHERE student_id = ?", [id]);
+  return db.runAsync("DELETE FROM students WHERE id = ?", [id]);
+};
+
+export const getStudentCountsByClass = async () => {
+  const db = await getDB();
+  return db.getAllAsync<{ class_id: number; count: number }>(
+    "SELECT class_id, COUNT(*) as count FROM students GROUP BY class_id"
+  );
+};
+
 // ✅ Attendance
 export const markAttendance = async (
   studentId: number,
   date: string,
   status: "present" | "absent" | "excused" | "cutting"
 ) => {
+  const db = await getDB();
   await db.runAsync(
     `INSERT OR REPLACE INTO attendance (student_id, date, status)
      VALUES (?, ?, ?)`,
@@ -118,8 +155,23 @@ export const markAttendance = async (
   );
 };
 
-export const getAttendanceByDate = async (date: string) =>
-  db.getAllAsync<any>(
+export const markAllPresent = async (classId: number, date: string) => {
+  const db = await getDB();
+  const students = await db.getAllAsync<{ id: number }>(
+    "SELECT id FROM students WHERE class_id = ?",
+    [classId]
+  );
+  for (const s of students) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO attendance (student_id, date, status) VALUES (?, ?, 'present')`,
+      [s.id, date]
+    );
+  }
+};
+
+export const getAttendanceByDate = async (date: string) => {
+  const db = await getDB();
+  return db.getAllAsync<any>(
     `SELECT s.name, a.status
        FROM students s
        LEFT JOIN attendance a
@@ -127,9 +179,11 @@ export const getAttendanceByDate = async (date: string) =>
       ORDER BY s.name`,
     [date]
   );
+}
 
-export const getAttendanceForClass = async (classId: number, date: string) =>
-  db.getAllAsync<any>(
+export const getAttendanceForClass = async (classId: number, date: string) => {
+  const db = await getDB();
+  return db.getAllAsync<any>(
     `SELECT s.*, a.status
        FROM students s
        LEFT JOIN attendance a
@@ -138,16 +192,20 @@ export const getAttendanceForClass = async (classId: number, date: string) =>
       ORDER BY s.name`,
     [date, classId]
   );
+}
 
-export const getAttendanceLog = async () =>
-  db.getAllAsync<any>(
+export const getAttendanceLog = async () => {
+  const db = await getDB();
+  return db.getAllAsync<any>(
     `SELECT a.date, s.name, a.status
        FROM attendance a
        JOIN students s ON a.student_id = s.id
       ORDER BY a.date DESC`
   );
+}
 
 export const getAttendanceByStudent = async (studentId: number) => {
+  const db = await getDB();
   return await db.getAllAsync<any>(
     `SELECT date, status
        FROM attendance
@@ -157,9 +215,37 @@ export const getAttendanceByStudent = async (studentId: number) => {
   );
 };
 
+export const getClassAttendanceHistory = async (classId: number) => {
+  const db = await getDB();
+  return db.getAllAsync<any>(
+    `SELECT s.name, a.date, a.status
+       FROM students s
+       LEFT JOIN attendance a ON s.id = a.student_id
+      WHERE s.class_id = ?
+      ORDER BY a.date DESC, s.name ASC`,
+    [classId]
+  );
+};
+
+export const getClassAttendanceByMonth = async (classId: number, year: number, month: number) => {
+  const db = await getDB();
+  const monthStr = String(month).padStart(2, '0');
+  const prefix = `${year}-${monthStr}`;
+  return db.getAllAsync<any>(
+    `SELECT s.name, s.gender, a.date, a.status
+       FROM students s
+       LEFT JOIN attendance a
+         ON s.id = a.student_id AND a.date LIKE ?
+      WHERE s.class_id = ?
+      ORDER BY s.name ASC, a.date ASC`,
+    [`${prefix}%`, classId]
+  );
+};
+
 
 // ✅ Clear All
 export const clearAllData = async () => {
+  const db = await getDB();
   await db.execAsync(`
     DROP TABLE IF EXISTS attendance;
     DROP TABLE IF EXISTS students;
@@ -168,49 +254,4 @@ export const clearAllData = async () => {
   await db.execAsync(createTables);
 };
 
-
-// export const seedDatabase = async () => {
-//   // Sample students (assuming IDs 1–4)
-//   const studentIds = [1, 2, 3, 4];
-//   const startDate = new Date("2025-10-01");
-
-//   // Insert sample classes
-//   await db.execAsync(`
-//     INSERT INTO classes (name) VALUES 
-//     ('Section A'),
-//     ('Section B');
-//   `);
-
-//   // Insert sample students
-//   await db.execAsync(`
-//     INSERT INTO students (name, class_id, gender) VALUES
-//     ('Juan Dela Cruz', 1, 'male'),
-//     ('Maria Santos', 1, 'female'),
-//     ('Pedro Reyes', 2, 'male'),
-//     ('Anna Lopez', 2, 'female');
-//   `);
-
-//   // Build bulk attendance insert statements
-//   let attendanceSQL = "INSERT INTO attendance (student_id, date, status) VALUES";
-//   let values = [];
-
-//   for (let i = 0; i < 10; i++) { // 10 days
-//     const dateString = new Date(startDate.getTime() + i * 86400000)
-//       .toISOString()
-//       .split("T")[0]; // e.g., '2025-10-01'
-//     for (const id of studentIds) {
-//       // Alternate status for some randomness
-//       const status = (i + id) % 2 === 0 ? "present" : "absent";
-//       values.push(`(${id}, '${dateString}', '${status}')`);
-//     }
-//   }
-//   attendanceSQL += values.join(",") + ";";
-
-//   // Insert bulk attendance
-//   await db.execAsync(attendanceSQL);
-
-//   console.log("Seeded 10 attendance records per student!");
-// };
-
-
-export default db;
+export default getDB;
